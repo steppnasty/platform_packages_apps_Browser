@@ -260,6 +260,7 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
         settings.setSaveFormData(saveFormdata());
         settings.setUseWideViewPort(isWideViewport());
         settings.setAutoFillProfile(getAutoFillProfile());
+        settings.setWOFFEnabled(isWOFFEnabled());
 
         String ua = mCustomUserAgents.get(settings);
         if (ua != null) {
@@ -697,6 +698,13 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
 
     public int getUserAgent() {
         return Integer.parseInt(mPrefs.getString(PREF_USER_AGENT, "0"));
+    }
+
+    public boolean isWOFFEnabled() {
+        if (!isDebugEnabled()) {
+            return true;
+        }
+        return mPrefs.getBoolean(PREF_ENABLE_WOFF, true);
     }
 
     // -----------------------------
