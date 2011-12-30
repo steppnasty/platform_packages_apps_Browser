@@ -180,7 +180,7 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
             mPrefs.registerOnSharedPreferenceChangeListener(BrowserSettings.this);
             if (Build.VERSION.CODENAME.equals("REL")) {
                 // This is a release build, always startup with debug disabled
-                setDebugEnabled(false);
+                setDebugEnabled(true);
             }
             if (mPrefs.contains(PREF_TEXT_SIZE)) {
                 /*
