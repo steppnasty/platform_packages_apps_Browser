@@ -43,6 +43,11 @@
             android:key="enable_javascript"
             android:defaultValue="true"
             android:title="@string/pref_content_javascript" />
+    
+    <CheckBoxPreference
+            android:key="enable_cpu_upload_path"
+            android:defaultValue="true"
+            android:title="@string/pref_development_cpu_upload_path" />
 
     <ListPreference
             android:key="plugin_state"
