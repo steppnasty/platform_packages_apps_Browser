@@ -261,6 +261,7 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
         settings.setUseWideViewPort(isWideViewport());
         settings.setAutoFillProfile(getAutoFillProfile());
         settings.setWOFFEnabled(isWOFFEnabled());
+        settings.setWebGLEnabled(isWebGLEnabled());
 
         String ua = mCustomUserAgents.get(settings);
         if (ua != null) {
@@ -807,6 +808,10 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
 
     public float getInvertedContrast() {
         return 1 + (mPrefs.getInt(PREF_INVERTED_CONTRAST, 0) / 10f);
+    }
+
+    public boolean isWebGLEnabled() {
+        return mPrefs.getBoolean(PREF_ENABLE_WEBGL, true);
     }
 
     // -----------------------------
