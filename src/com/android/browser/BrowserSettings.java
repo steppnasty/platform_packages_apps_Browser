@@ -124,6 +124,8 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
 
     private static String sFactoryResetUrl;
 
+    private static boolean sWebGLAvailable;
+
     public static void initialize(final Context context) {
         sInstance = new BrowserSettings(context);
     }
@@ -261,7 +263,9 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
         settings.setUseWideViewPort(isWideViewport());
         settings.setAutoFillProfile(getAutoFillProfile());
         settings.setWOFFEnabled(isWOFFEnabled());
-        settings.setWebGLEnabled(isWebGLEnabled());
+
+        setIsWebGLAvailable(settings.isWebGLAvailable());
+        settings.setWebGLEnabled(isWebGLAvailable() && isWebGLEnabled());
 
         String ua = mCustomUserAgents.get(settings);
         if (ua != null) {
@@ -864,5 +868,13 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
 
     public String getPreloadEnabled() {
         return mPrefs.getString(PREF_DATA_PRELOAD, getDefaultPreloadSetting());
+    }
+
+    private static void setIsWebGLAvailable(boolean available) {
+        sWebGLAvailable = available;
+    }
+
+    public static boolean isWebGLAvailable() {
+        return sWebGLAvailable;
     }
 }
