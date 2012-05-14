@@ -1747,8 +1747,12 @@ class Tab implements PictureListener {
         capture();
         mInForeground = false;
         pause();
-        mMainView.setOnCreateContextMenuListener(null);
+        if (mMainView != null) {
+            mMainView.onMoveToBackgroundTab();
+            mMainView.setOnCreateContextMenuListener(null);
+        }
         if (mSubView != null) {
+            mSubView.onMoveToBackgroundTab();
             mSubView.setOnCreateContextMenuListener(null);
         }
     }
