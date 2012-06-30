@@ -32,9 +32,4 @@
         android:defaultValue="true"
         android:title="@string/pref_lab_slide_tab_transitions"
         android:summary="@string/pref_lab_slide_tab_transitions_summary" />
-    <CheckBoxPreference
-        android:key="enable_webgl"
-        android:defaultValue="true"
-        android:title="@string/pref_lab_webgl"
-        android:summary="@string/pref_lab_webgl_summary" />
 </PreferenceScreen>

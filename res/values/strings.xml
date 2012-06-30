@@ -593,10 +593,6 @@
     <string name="pref_development_cpu_upload_path" translatable="false">Enable Cpu Upload Path</string>
     <!-- Do not tranlsate.  Development option -->
     <string name="js_engine_flags" translatable="false">Set JS flags</string>
-
-    <!-- Do not translate.  Development option -->
-    <string name="pref_development_woff" translatable="false">Enable WOFF</string>
-
     <string name="pref_development_error_console" translatable="false">Show JavaScript Console</string>
     <!-- Do not translate. Development option to reset the prologin time [CHAR LIMIT=20] -->
     <string name="pref_development_reset_prelogin" translatable="false">Reset prelogin</string>
@@ -656,10 +652,6 @@
     <!-- Summary for the fullscreen lab feature [CHAR LIMIT=120] -->
     <string name="pref_lab_slide_tab_transitions_summary">
       Swipe from the edge to reveal the next/previous tab in the list.</string>
-    <!-- Title for the WebGL feature [CHAR LIMIT=40] -->
-    <string name="pref_lab_webgl">WebGL</string>
-    <!-- Summary for the WebGL lab feature [CHAR LIMIT=120] -->
-    <string name="pref_lab_webgl_summary">Enables WebGL.</string>
     <!-- Title for bandwidth management preference [CHAR LIMIT=25] -->
     <string name="pref_data_title">Bandwidth management</string>
     <!-- Title for search preloading [CHAR LIMIT=40] -->
@@ -871,12 +863,6 @@
     <string name="website_settings_clear_all_dialog_message">Delete all website data and location permissions?</string>
     <string name="website_settings_clear_all_dialog_ok_button">OK</string>
     <string name="website_settings_clear_all_dialog_cancel_button">Cancel</string>
-    <!-- Navigator Permissions -->
-    <!-- Permissions prompt -->
-    <string name="navigator_permissions_prompt_message"><xliff:g id="website ">%s</xliff:g> wants to access <xliff:g id="feature">%s</xliff:g> on your device </string>
-    <string name="navigator_permissions_prompt_share">Allow</string>
-    <string name="navigator_permissions_prompt_dont_share">Decline</string>
-    <string name="navigator_permissions_prompt_remember">Remember preference</string>
 
     <!-- Text in the progress dialog when we are setting an image as the home screen wallpaper. -->
     <string name="progress_dialog_setting_wallpaper">Setting wallpaper\u2026</string>

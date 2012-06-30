@@ -54,7 +54,6 @@ public interface PreferenceKeys {
     static final String PREF_ENABLE_HARDWARE_ACCEL = "enable_hardware_accel";
     static final String PREF_ENABLE_HARDWARE_ACCEL_SKIA = "enable_hardware_accel_skia";
     static final String PREF_USER_AGENT = "user_agent";
-    static final String PREF_ENABLE_WOFF = "enable_woff";
 
     // ----------------------
     // Keys for general_preferences.xml
@@ -85,7 +84,6 @@ public interface PreferenceKeys {
     static final String PREF_ENABLE_QUICK_CONTROLS = "enable_quick_controls";
     static final String PREF_FULLSCREEN = "fullscreen";
     static final String PREF_ENABLE_SLIDE_TAB_TRANSITIONS = "enable_slide_tab_transitions";
-    static final String PREF_ENABLE_WEBGL = "enable_webgl";
 
     // ----------------------
     // Keys for privacy_security_preferences.xml
