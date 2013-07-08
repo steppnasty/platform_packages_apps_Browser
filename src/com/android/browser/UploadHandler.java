@@ -90,7 +90,7 @@ public class UploadHandler {
         mCaughtActivityNotFoundException = false;
     }
 
-    void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType) {
+    void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
 
         final String imageMimeType = "image/*";
         final String videoMimeType = "video/*";
@@ -116,12 +116,22 @@ public class UploadHandler {
         String params[] = acceptType.split(";");
         String mimeType = params[0];
 
-        for (String p : params) {
-            String[] keyValue = p.split("=");
-            if (keyValue.length == 2) {
-                // Process key=value parameters.
-                if (mediaSourceKey.equals(keyValue[0])) {
-                    mediaSource = keyValue[1];
+        if (capture.length() > 0) {
+            mediaSource = capture;
+        }
+
+        if (capture.equals(mediaSourceValueFileSystem)) {
+            // To maintain backwards compatibility with the previous implementation
+            // of the media capture API, if the value of the 'capture' attribute is
+            // "filesystem", we should examine the accept-type for a MIME type that
+            // may specify a different capture value.
+            for (String p : params) {
+                String[] keyValue = p.split("=");
+                if (keyValue.length == 2) {
+                    // Process key=value parameters.
+                    if (mediaSourceKey.equals(keyValue[0])) {
+                        mediaSource = keyValue[1];
+                    }
                 }
             }
         }

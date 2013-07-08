@@ -130,8 +130,9 @@ public class PreloadController implements WebViewController {
     }
 
     @Override
-    public void onUnhandledKeyEvent(KeyEvent event) {
+    public boolean onUnhandledKeyEvent(KeyEvent event) {
         if (LOGD_ENABLED) Log.d(LOGTAG, "onUnhandledKeyEvent()");
+        return false;
     }
 
     @Override
@@ -154,7 +155,7 @@ public class PreloadController implements WebViewController {
     @Override
     public void onDownloadStart(Tab tab, String url, String useragent,
                                     String contentDisposition, String mimeType,
-                                    long contentLength) {
+                                    String referer, long contentLength) {
         if (LOGD_ENABLED) Log.d(LOGTAG, "onDownloadStart()");
     }
 
@@ -193,16 +194,6 @@ public class PreloadController implements WebViewController {
     }
 
     @Override
-    public void activateVoiceSearchMode(String title, List<String> results) {
-        if (LOGD_ENABLED) Log.d(LOGTAG, "activateVoiceSearchMode()");
-    }
-
-    @Override
-    public void revertVoiceSearchMode(Tab tab) {
-        if (LOGD_ENABLED) Log.d(LOGTAG, "revertVoiceSearchMode()");
-    }
-
-    @Override
     public boolean shouldShowErrorConsole() {
         if (LOGD_ENABLED) Log.d(LOGTAG, "shouldShowErrorConsole()");
         return false;
@@ -214,7 +205,7 @@ public class PreloadController implements WebViewController {
     }
 
     @Override
-    public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType) {
+    public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
         if (LOGD_ENABLED) Log.d(LOGTAG, "openFileChooser()");
     }
 

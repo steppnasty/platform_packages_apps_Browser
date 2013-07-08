@@ -101,29 +101,6 @@ public class IntentHandler {
                 || MediaStore.INTENT_ACTION_MEDIA_SEARCH.equals(action)
                 || Intent.ACTION_WEB_SEARCH.equals(action)
                 || activateVoiceSearch) {
-            if (current.isInVoiceSearchMode()) {
-                String title = current.getVoiceDisplayTitle();
-                if (title != null && title.equals(intent.getStringExtra(
-                        SearchManager.QUERY))) {
-                    // The user submitted the same search as the last voice
-                    // search, so do nothing.
-                    return;
-                }
-                if (Intent.ACTION_SEARCH.equals(action)
-                        && current.voiceSearchSourceIsGoogle()) {
-                    Intent logIntent = new Intent(
-                            LoggingEvents.ACTION_LOG_EVENT);
-                    logIntent.putExtra(LoggingEvents.EXTRA_EVENT,
-                            LoggingEvents.VoiceSearch.QUERY_UPDATED);
-                    logIntent.putExtra(
-                            LoggingEvents.VoiceSearch.EXTRA_QUERY_UPDATED_VALUE,
-                            intent.getDataString());
-                    mActivity.sendBroadcast(logIntent);
-                    // Note, onPageStarted will revert the voice title bar
-                    // When http://b/issue?id=2379215 is fixed, we should update
-                    // the title bar here.
-                }
-            }
             // If this was a search request (e.g. search query directly typed into the address bar),
             // pass it on to the default web search provider.
             if (handleWebSearchIntent(mActivity, mController, intent)) {
@@ -197,15 +174,15 @@ public class IntentHandler {
                 if (!urlData.isEmpty()
                         && urlData.mUrl.startsWith("about:debug")) {
                     if ("about:debug.dom".equals(urlData.mUrl)) {
-                        current.getWebView().dumpDomTree(false);
+                        current.getWebViewClassic().dumpDomTree(false);
                     } else if ("about:debug.dom.file".equals(urlData.mUrl)) {
-                        current.getWebView().dumpDomTree(true);
+                        current.getWebViewClassic().dumpDomTree(true);
                     } else if ("about:debug.render".equals(urlData.mUrl)) {
-                        current.getWebView().dumpRenderTree(false);
+                        current.getWebViewClassic().dumpRenderTree(false);
                     } else if ("about:debug.render.file".equals(urlData.mUrl)) {
-                        current.getWebView().dumpRenderTree(true);
+                        current.getWebViewClassic().dumpRenderTree(true);
                     } else if ("about:debug.display".equals(urlData.mUrl)) {
-                        current.getWebView().dumpDisplayTree();
+                        current.getWebViewClassic().dumpDisplayTree();
                     } else if ("about:debug.nav".equals(urlData.mUrl)) {
                         current.getWebView().debugDump();
                     } else {
@@ -362,6 +339,7 @@ public class IntentHandler {
         final Intent mVoiceIntent;
         final PreloadedTabControl mPreloadedTab;
         final String mSearchBoxQueryToSubmit;
+        final boolean mDisableUrlOverride;
 
         UrlData(String url) {
             this.mUrl = url;
@@ -369,6 +347,7 @@ public class IntentHandler {
             this.mVoiceIntent = null;
             this.mPreloadedTab = null;
             this.mSearchBoxQueryToSubmit = null;
+            this.mDisableUrlOverride = false;
         }
 
         UrlData(String url, Map<String, String> headers, Intent intent) {
@@ -387,6 +366,12 @@ public class IntentHandler {
             }
             this.mPreloadedTab = preloaded;
             this.mSearchBoxQueryToSubmit = searchBoxQueryToSubmit;
+            if (intent != null) {
+                mDisableUrlOverride = intent.getBooleanExtra(
+                        BrowserActivity.EXTRA_DISABLE_URL_OVERRIDE, false);
+            } else {
+                mDisableUrlOverride = false;
+            }
         }
 
         boolean isEmpty() {

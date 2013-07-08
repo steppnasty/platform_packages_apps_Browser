@@ -51,6 +51,7 @@ import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.webkit.WebViewClassic;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -116,6 +117,7 @@ public abstract class BaseUi implements UI {
     protected boolean mUseQuickControls;
     protected TitleBar mTitleBar;
     private NavigationBarBase mNavigationBar;
+    protected PieControl mPieControl;
 
     private int mWindowFrameYOffset;
     private boolean mIsEnteringFullscreen;
@@ -206,6 +208,21 @@ public abstract class BaseUi implements UI {
         return false;
     }
 
+    @Override
+    public void setUseQuickControls(boolean useQuickControls) {
+        mUseQuickControls = useQuickControls;
+        mTitleBar.setUseQuickControls(mUseQuickControls);
+        if (useQuickControls) {
+            mPieControl = new PieControl(mActivity, mUiController, this);
+            mPieControl.attachToContainer(mContentView);
+        } else {
+            if (mPieControl != null) {
+                mPieControl.removeFromContainer(mContentView);
+            }
+        }
+        updateUrlBarAutoShowManagerTarget();
+    }
+
     // Tab callbacks
     @Override
     public void onTabDataChanged(Tab tab) {
@@ -216,6 +233,14 @@ public abstract class BaseUi implements UI {
         mTitleBar.onTabDataChanged(tab);
         mNavigationBar.onTabDataChanged(tab);
         onProgressChanged(tab);
+    }
+
+    @Override
+    public void onProgressChanged(Tab tab) {
+        int progress = tab.getLoadProgress();
+        if (tab.inForeground()) {
+            mTitleBar.setProgress(progress);
+        }
     }
 
     @Override
@@ -354,7 +379,6 @@ public abstract class BaseUi implements UI {
         // Remove the container from the content and then remove the
         // WebView from the container. This will trigger a focus change
         // needed by WebView.
-        mainView.setEmbeddedTitleBar(null);
         FrameLayout wrapper =
                 (FrameLayout) container.findViewById(R.id.webview_wrapper);
         wrapper.removeView(mainView);
@@ -405,7 +429,8 @@ public abstract class BaseUi implements UI {
         final WebView cancelSubView = subView;
         cancel.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                cancelSubView.getWebChromeClient().onCloseWindow(cancelSubView);
+                WebViewClassic.fromWebView(cancelSubView).getWebChromeClient().onCloseWindow(
+                        cancelSubView);
             }
         });
         tab.setSubWebView(subView);
@@ -440,13 +465,13 @@ public abstract class BaseUi implements UI {
         }
     }
 
-    public void editUrl(boolean clearInput) {
+    public void editUrl(boolean clearInput, boolean forceIME) {
         if (mUiController.isInCustomActionMode()) {
             mUiController.endActionMode();
         }
         showTitleBar();
         if ((getActiveTab() != null) && !getActiveTab().isSnapshot()) {
-            mNavigationBar.startEditingUrl(clearInput);
+            mNavigationBar.startEditingUrl(clearInput, forceIME);
         }
     }
 
@@ -479,15 +504,12 @@ public abstract class BaseUi implements UI {
         return mTitleBar.isEditingUrl();
     }
 
-    public TitleBar getTitleBar() {
-        return mTitleBar;
+    public void stopEditingUrl() {
+        mTitleBar.getNavigationBar().stopEditingUrl();
     }
 
-    protected void setTitleGravity(int gravity) {
-        WebView web = getWebView();
-        if (web != null) {
-            web.setTitleBarGravity(gravity);
-        }
+    public TitleBar getTitleBar() {
+        return mTitleBar;
     }
 
     @Override
@@ -657,7 +679,6 @@ public abstract class BaseUi implements UI {
         if (TextUtils.isEmpty(title)) {
             title = url;
         }
-        if (tab.isInVoiceSearchMode()) return;
         if (tab.inForeground()) {
             mNavigationBar.setDisplayTitle(url);
         }
@@ -818,6 +839,13 @@ public abstract class BaseUi implements UI {
     public void setUseSlideTransitions(boolean enabled) {
     }
 
+    public boolean isFullscreen() {
+        Window win = mActivity.getWindow();
+        WindowManager.LayoutParams winParams = win.getAttributes();
+        final int bits = WindowManager.LayoutParams.FLAG_FULLSCREEN;
+        return (winParams.flags & bits) == bits;
+    }
+
     public Drawable getFaviconDrawable(Bitmap icon) {
         Drawable[] array = new Drawable[3];
         array[0] = new PaintDrawable(Color.BLACK);
@@ -900,5 +928,10 @@ public abstract class BaseUi implements UI {
         // Show the content view.
         mActivity.setRequestedOrientation(mOriginalOrientation);
         mIsExitingFullscreen = false;
+    }
+
+    @Override
+    public void onVoiceResult(String result) {
+        mNavigationBar.onVoiceResult(result);
     }
 }

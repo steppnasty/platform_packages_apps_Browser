@@ -135,7 +135,7 @@ public interface UI {
 
     void showMaxTabsWarning();
 
-    void editUrl(boolean clearInput);
+    void editUrl(boolean clearInput, boolean forceIME);
 
     boolean isEditingUrl();
 
@@ -147,10 +147,13 @@ public interface UI {
 
     void setFullscreen(boolean enabled);
 
+    boolean isFullscreen();
+
     void setUseQuickControls(boolean enabled);
 
     void setUseSlideTransitions(boolean enabled);
 
     public boolean shouldCaptureThumbnails();
 
+    void onVoiceResult(String result);
 }

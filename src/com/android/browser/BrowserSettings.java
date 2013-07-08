@@ -33,11 +33,12 @@ import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.WebIconDatabase;
 import android.webkit.WebSettings;
-import android.webkit.WebSettings.AutoFillProfile;
 import android.webkit.WebSettings.LayoutAlgorithm;
 import android.webkit.WebSettings.PluginState;
 import android.webkit.WebSettings.TextSize;
 import android.webkit.WebSettings.ZoomDensity;
+import android.webkit.WebSettingsClassic;
+import android.webkit.WebSettingsClassic.AutoFillProfile;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewDatabase;
@@ -150,12 +151,13 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
     }
 
     public void startManagingSettings(WebSettings settings) {
+        WebSettingsClassic settingsClassic = (WebSettingsClassic) settings;
         if (mNeedsSharedSync) {
             syncSharedSettings();
         }
         synchronized (mManagedSettings) {
-            syncStaticSettings(settings);
-            syncSetting(settings);
+            syncStaticSettings(settingsClassic);
+            syncSetting(settingsClassic);
             mManagedSettings.add(new WeakReference<WebSettings>(settings));
         }
     }
@@ -236,7 +238,7 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
     /**
      * Syncs all the settings that have a Preference UI
      */
-    private void syncSetting(WebSettings settings) {
+    private void syncSetting(WebSettingsClassic settings) {
         settings.setGeolocationEnabled(enableGeolocation());
         settings.setJavaScriptEnabled(enableJavascript());
         settings.setLightTouchEnabled(enableLightTouch());
@@ -286,7 +288,7 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
      * Syncs all the settings that have no UI
      * These cannot change, so we only need to set them once per WebSettings
      */
-    private void syncStaticSettings(WebSettings settings) {
+    private void syncStaticSettings(WebSettingsClassic settings) {
         settings.setDefaultFontSize(16);
         settings.setDefaultFixedFontSize(13);
         settings.setPageCacheCapacity(getPageCacheCapacity());
@@ -338,7 +340,7 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
             Iterator<WeakReference<WebSettings>> iter = mManagedSettings.iterator();
             while (iter.hasNext()) {
                 WeakReference<WebSettings> ref = iter.next();
-                WebSettings settings = ref.get();
+                WebSettingsClassic settings = (WebSettingsClassic)ref.get();
                 if (settings == null) {
                     iter.remove();
                     continue;
@@ -415,19 +417,6 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
         String searchEngineName = getSearchEngineName();
         if (force || mSearchEngine == null ||
                 !mSearchEngine.getName().equals(searchEngineName)) {
-            if (mSearchEngine != null) {
-                if (mSearchEngine.supportsVoiceSearch()) {
-                     // One or more tabs could have been in voice search mode.
-                     // Clear it, since the new SearchEngine may not support
-                     // it, or may handle it differently.
-                     if (mController != null) {
-                         for (int i = 0; i < mController.getTabControl().getTabCount(); i++) {
-                             mController.getTabControl().getTab(i).revertVoiceSearchMode();
-                         }
-                     }
-                 }
-                mSearchEngine.close();
-             }
             mSearchEngine = SearchEngines.get(mContext, searchEngineName);
          }
     }
@@ -872,5 +861,16 @@ public class BrowserSettings implements OnSharedPreferenceChangeListener,
 
     public String getVideoPreloadEnabled() {
         return mPrefs.getString(PREF_VIDEO_PRELOAD, getDefaultVideoPreloadSetting());
+    }
+
+    /**
+     * Sets whether or not the last run was a pause or crash.
+     * @param isPaused Set to true When a pause is received or false after
+     * resuming.
+     */
+    public void setLastRunPaused(boolean isPaused) {
+        mPrefs.edit()
+            .putBoolean(KEY_LAST_RUN_PAUSED, isPaused)
+            .apply();
     }
 }

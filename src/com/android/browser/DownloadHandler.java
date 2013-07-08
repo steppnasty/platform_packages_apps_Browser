@@ -57,7 +57,7 @@ public class DownloadHandler {
      */
     public static void onDownloadStart(Activity activity, String url,
             String userAgent, String contentDisposition, String mimetype,
-            boolean privateBrowsing) {
+            String referer, boolean privateBrowsing) {
         // if we're dealing wih A/V content that's not explicitly marked
         //     for download, check if it's streamable.
         if (contentDisposition == null
@@ -96,7 +96,7 @@ public class DownloadHandler {
             }
         }
         onDownloadStartNoStream(activity, url, userAgent, contentDisposition,
-                mimetype, privateBrowsing);
+                mimetype, referer, privateBrowsing);
     }
 
     // This is to work around the fact that java.net.URI throws Exceptions
@@ -141,7 +141,7 @@ public class DownloadHandler {
      */
     /*package */ static void onDownloadStartNoStream(Activity activity,
             String url, String userAgent, String contentDisposition,
-            String mimetype, boolean privateBrowsing) {
+            String mimetype, String referer, boolean privateBrowsing) {
 
         String filename = URLUtil.guessFileName(url,
                 contentDisposition, mimetype);
@@ -205,6 +205,7 @@ public class DownloadHandler {
         String cookies = CookieManager.getInstance().getCookie(url, privateBrowsing);
         request.addRequestHeader("cookie", cookies);
         request.addRequestHeader("User-Agent", userAgent);
+        request.addRequestHeader("Referer", referer);
         request.setNotificationVisibility(
                 DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
         if (mimetype == null) {

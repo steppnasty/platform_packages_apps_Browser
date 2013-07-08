@@ -96,14 +96,6 @@ public class NavigationBarPhone extends NavigationBarBase implements
     }
 
     @Override
-    protected void setSearchMode(boolean voiceSearchEnabled) {
-        boolean showvoicebutton = voiceSearchEnabled &&
-                mUiController.supportsVoiceSearch();
-        mVoiceButton.setVisibility(showvoicebutton ? View.VISIBLE :
-                View.GONE);
-    }
-
-    @Override
     public void onProgressStarted() {
         super.onProgressStarted();
         if (mStopButton.getDrawable() != mStopDrawable) {
@@ -157,8 +149,6 @@ public class NavigationBarPhone extends NavigationBarBase implements
                     web.reload();
                 }
             }
-        } else if (v == mVoiceButton) {
-            mUiController.startVoiceSearch();
         } else if (v == mTabSwitcher) {
             ((PhoneUi) mBaseUi).toggleNavScreen();
         } else if (mMore == v) {
@@ -229,7 +219,6 @@ public class NavigationBarPhone extends NavigationBarBase implements
             mStopButton.setVisibility(View.GONE);
             mClearButton.setVisibility(View.GONE);
             mMagnify.setVisibility(View.GONE);
-            setSearchMode(mInVoiceMode);
             mTabSwitcher.setVisibility(View.VISIBLE);
             mTitleContainer.setBackgroundDrawable(null);
             mMore.setVisibility(mNeedsMenu ? View.VISIBLE : View.GONE);
@@ -239,7 +228,6 @@ public class NavigationBarPhone extends NavigationBarBase implements
             mStopButton.setVisibility(View.VISIBLE);
             mClearButton.setVisibility(View.GONE);
             mMagnify.setVisibility(View.GONE);
-            setSearchMode(true);
             mTabSwitcher.setVisibility(View.GONE);
             mMore.setVisibility(View.GONE);
             mTitleContainer.setBackgroundDrawable(mTextfieldBgDrawable);
@@ -249,7 +237,6 @@ public class NavigationBarPhone extends NavigationBarBase implements
             mStopButton.setVisibility(View.GONE);
             mClearButton.setVisibility(View.VISIBLE);
             mMagnify.setVisibility(View.VISIBLE);
-            setSearchMode(false);
             mTabSwitcher.setVisibility(View.GONE);
             mMore.setVisibility(View.GONE);
             mTitleContainer.setBackgroundDrawable(mTextfieldBgDrawable);

@@ -52,7 +52,7 @@ public class NavigationBarTablet extends NavigationBarBase {
     private ImageView mStopButton;
     private View mAllButton;
     private View mClearButton;
-    private ImageView mVoiceSearch;
+    private View mVoiceButton;
     private View mNavButtons;
     private Drawable mFocusDrawable;
     private Drawable mUnfocusDrawable;
@@ -102,7 +102,7 @@ public class NavigationBarTablet extends NavigationBarBase {
         mSearchButton = (ImageView) findViewById(R.id.search);
         mGoButton = findViewById(R.id.go);
         mClearButton = findViewById(R.id.clear);
-        mVoiceSearch = (ImageView) findViewById(R.id.voicesearch);
+        mVoiceButton = findViewById(R.id.voice);
         mUrlContainer = findViewById(R.id.urlbar_focused);
         mBackButton.setOnClickListener(this);
         mForwardButton.setOnClickListener(this);
@@ -112,7 +112,7 @@ public class NavigationBarTablet extends NavigationBarBase {
         mSearchButton.setOnClickListener(this);
         mGoButton.setOnClickListener(this);
         mClearButton.setOnClickListener(this);
-        mVoiceSearch.setOnClickListener(this);
+        mVoiceButton.setOnClickListener(this);
         mUrlInput.setContainer(mUrlContainer);
     }
 
@@ -177,7 +177,7 @@ public class NavigationBarTablet extends NavigationBarBase {
         } else if (mAllButton == v) {
             mUiController.bookmarksOrHistoryPicker(ComboViews.Bookmarks);
         } else if (mSearchButton == v) {
-            mBaseUi.editUrl(true);
+            mBaseUi.editUrl(true, true);
         } else if (mStopButton == v) {
             stopOrRefresh();
         } else if (mGoButton == v) {
@@ -187,8 +187,8 @@ public class NavigationBarTablet extends NavigationBarBase {
             }
         } else if (mClearButton == v) {
             clearOrClose();
-        } else if (mVoiceSearch == v) {
-            mUiController.startVoiceSearch();
+        } else if (mVoiceButton == v) {
+            mUiController.startVoiceRecognizer();
         } else {
             super.onClick(v);
         }
@@ -241,10 +241,7 @@ public class NavigationBarTablet extends NavigationBarBase {
             if (mHideNavButtons) {
                 showNavButtons();
             }
-            mGoButton.setVisibility(View.GONE);
-            mVoiceSearch.setVisibility(View.GONE);
             showHideStar(mUiController.getCurrentTab());
-            mClearButton.setVisibility(View.GONE);
             if (mTitleBar.useQuickControls()) {
                 mSearchButton.setVisibility(View.GONE);
             } else {
@@ -279,16 +276,6 @@ public class NavigationBarTablet extends NavigationBarBase {
 
     protected void updateSearchMode(boolean userEdited) {
         setSearchMode(!userEdited || TextUtils.isEmpty(mUrlInput.getText()));
-    }
-
-    @Override
-    protected void setSearchMode(boolean voiceSearchEnabled) {
-        boolean showvoicebutton = voiceSearchEnabled &&
-                mUiController.supportsVoiceSearch();
-        mVoiceSearch.setVisibility(showvoicebutton ? View.VISIBLE :
-                View.GONE);
-        mGoButton.setVisibility(voiceSearchEnabled ? View.GONE :
-                View.VISIBLE);
     }
 
     @Override

@@ -49,9 +49,9 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewStub;
+import android.webkit.BrowserDownloadListener;
 import android.webkit.ClientCertRequestHandler;
 import android.webkit.ConsoleMessage;
-import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
 import android.webkit.HttpAuthHandler;
 import android.webkit.SslErrorHandler;
@@ -65,7 +65,9 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebView.PictureListener;
+import android.webkit.WebViewClassic;
 import android.webkit.WebViewClient;
+import android.webkit.WebViewClientClassicExt;
 import android.widget.CheckBox;
 import android.widget.Toast;
 
@@ -75,12 +77,16 @@ import com.android.browser.provider.SnapshotProvider.Snapshots;
 import com.android.common.speech.LoggingEvents;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.UUID;
 import java.util.Vector;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
@@ -157,6 +163,7 @@ class Tab implements PictureListener {
     // If true, the tab is in page loading state (after onPageStarted,
     // before onPageFinsihed)
     private boolean mInPageLoad;
+    private boolean mDisableOverrideUrlLoading;
     // The last reported progress of the current page
     private int mPageLoadProgress;
     // The time the load started, used to find load page time
@@ -172,7 +179,7 @@ class Tab implements PictureListener {
     private ErrorConsoleView mErrorConsole;
     // The listener that gets invoked when a download is started from the
     // mMainView
-    private final DownloadListener mDownloadListener;
+    private final BrowserDownloadListener mDownloadListener;
     // Listener used to know when we move forward or back in the history list.
     private final WebBackForwardListClient mWebBackForwardListClient;
     private DataController mDataController;
@@ -187,6 +194,7 @@ class Tab implements PictureListener {
     private int mCaptureHeight;
     private Bitmap mCapture;
     private Handler mHandler;
+    private boolean mUpdateThumbnail;
 
     /**
      * See {@link #clearBackStackWhenItemAdded(String)}.
@@ -253,234 +261,6 @@ class Tab implements PictureListener {
 
     // Was this tab newly created? Used for new tab animation.
     private boolean mIsNewTab;
-
-    // -------------------------------------------------------------------------
-
-    /**
-     * Private information regarding the latest voice search.  If the Tab is not
-     * in voice search mode, this will be null.
-     */
-    private VoiceSearchData mVoiceSearchData;
-    /**
-     * Remove voice search mode from this tab.
-     */
-    public void revertVoiceSearchMode() {
-        if (mVoiceSearchData != null) {
-            mVoiceSearchData = null;
-            if (mInForeground) {
-                mWebViewController.revertVoiceSearchMode(this);
-            }
-        }
-    }
-
-    /**
-     * Return whether the tab is in voice search mode.
-     */
-    public boolean isInVoiceSearchMode() {
-        return mVoiceSearchData != null;
-    }
-    /**
-     * Return true if the Tab is in voice search mode and the voice search
-     * Intent came with a String identifying that Google provided the Intent.
-     */
-    public boolean voiceSearchSourceIsGoogle() {
-        return mVoiceSearchData != null && mVoiceSearchData.mSourceIsGoogle;
-    }
-    /**
-     * Get the title to display for the current voice search page.  If the Tab
-     * is not in voice search mode, return null.
-     */
-    public String getVoiceDisplayTitle() {
-        if (mVoiceSearchData == null) return null;
-        return mVoiceSearchData.mLastVoiceSearchTitle;
-    }
-    /**
-     * Get the latest array of voice search results, to be passed to the
-     * BrowserProvider.  If the Tab is not in voice search mode, return null.
-     */
-    public ArrayList<String> getVoiceSearchResults() {
-        if (mVoiceSearchData == null) return null;
-        return mVoiceSearchData.mVoiceSearchResults;
-    }
-    /**
-     * Activate voice search mode.
-     * @param intent Intent which has the results to use, or an index into the
-     *      results when reusing the old results.
-     */
-    /* package */ void activateVoiceSearchMode(Intent intent) {
-        int index = 0;
-        ArrayList<String> results = intent.getStringArrayListExtra(
-                    RecognizerResultsIntent.EXTRA_VOICE_SEARCH_RESULT_STRINGS);
-        if (results != null) {
-            ArrayList<String> urls = intent.getStringArrayListExtra(
-                        RecognizerResultsIntent.EXTRA_VOICE_SEARCH_RESULT_URLS);
-            ArrayList<String> htmls = intent.getStringArrayListExtra(
-                        RecognizerResultsIntent.EXTRA_VOICE_SEARCH_RESULT_HTML);
-            ArrayList<String> baseUrls = intent.getStringArrayListExtra(
-                        RecognizerResultsIntent
-                        .EXTRA_VOICE_SEARCH_RESULT_HTML_BASE_URLS);
-            // This tab is now entering voice search mode for the first time, or
-            // a new voice search was done.
-            int size = results.size();
-            if (urls == null || size != urls.size()) {
-                throw new AssertionError("improper extras passed in Intent");
-            }
-            if (htmls == null || htmls.size() != size || baseUrls == null ||
-                    (baseUrls.size() != size && baseUrls.size() != 1)) {
-                // If either of these arrays are empty/incorrectly sized, ignore
-                // them.
-                htmls = null;
-                baseUrls = null;
-            }
-            mVoiceSearchData = new VoiceSearchData(results, urls, htmls,
-                    baseUrls);
-            mVoiceSearchData.mHeaders = intent.getParcelableArrayListExtra(
-                    RecognizerResultsIntent
-                    .EXTRA_VOICE_SEARCH_RESULT_HTTP_HEADERS);
-            mVoiceSearchData.mSourceIsGoogle = intent.getBooleanExtra(
-                    VoiceSearchData.SOURCE_IS_GOOGLE, false);
-            mVoiceSearchData.mVoiceSearchIntent = new Intent(intent);
-        }
-        String extraData = intent.getStringExtra(
-                SearchManager.EXTRA_DATA_KEY);
-        if (extraData != null) {
-            index = Integer.parseInt(extraData);
-            if (index >= mVoiceSearchData.mVoiceSearchResults.size()) {
-                throw new AssertionError("index must be less than "
-                        + "size of mVoiceSearchResults");
-            }
-            if (mVoiceSearchData.mSourceIsGoogle) {
-                Intent logIntent = new Intent(
-                        LoggingEvents.ACTION_LOG_EVENT);
-                logIntent.putExtra(LoggingEvents.EXTRA_EVENT,
-                        LoggingEvents.VoiceSearch.N_BEST_CHOOSE);
-                logIntent.putExtra(
-                        LoggingEvents.VoiceSearch.EXTRA_N_BEST_CHOOSE_INDEX,
-                        index);
-                mContext.sendBroadcast(logIntent);
-            }
-            if (mVoiceSearchData.mVoiceSearchIntent != null) {
-                // Copy the Intent, so that each history item will have its own
-                // Intent, with different (or none) extra data.
-                Intent latest = new Intent(mVoiceSearchData.mVoiceSearchIntent);
-                latest.putExtra(SearchManager.EXTRA_DATA_KEY, extraData);
-                mVoiceSearchData.mVoiceSearchIntent = latest;
-            }
-        }
-        mVoiceSearchData.mLastVoiceSearchTitle
-                = mVoiceSearchData.mVoiceSearchResults.get(index);
-        if (mInForeground) {
-            mWebViewController.activateVoiceSearchMode(
-                    mVoiceSearchData.mLastVoiceSearchTitle,
-                    mVoiceSearchData.mVoiceSearchResults);
-        }
-        if (mVoiceSearchData.mVoiceSearchHtmls != null) {
-            // When index was found it was already ensured that it was valid
-            String uriString = mVoiceSearchData.mVoiceSearchHtmls.get(index);
-            if (uriString != null) {
-                Uri dataUri = Uri.parse(uriString);
-                if (RecognizerResultsIntent.URI_SCHEME_INLINE.equals(
-                        dataUri.getScheme())) {
-                    // If there is only one base URL, use it.  If there are
-                    // more, there will be one for each index, so use the base
-                    // URL corresponding to the index.
-                    String baseUrl = mVoiceSearchData.mVoiceSearchBaseUrls.get(
-                            mVoiceSearchData.mVoiceSearchBaseUrls.size() > 1 ?
-                            index : 0);
-                    mVoiceSearchData.mLastVoiceSearchUrl = baseUrl;
-                    mMainView.loadDataWithBaseURL(baseUrl,
-                            uriString.substring(RecognizerResultsIntent
-                            .URI_SCHEME_INLINE.length() + 1), "text/html",
-                            "utf-8", baseUrl);
-                    return;
-                }
-            }
-        }
-        mVoiceSearchData.mLastVoiceSearchUrl
-                = mVoiceSearchData.mVoiceSearchUrls.get(index);
-        if (null == mVoiceSearchData.mLastVoiceSearchUrl) {
-            mVoiceSearchData.mLastVoiceSearchUrl = UrlUtils.smartUrlFilter(
-                    mVoiceSearchData.mLastVoiceSearchTitle);
-        }
-        Map<String, String> headers = null;
-        if (mVoiceSearchData.mHeaders != null) {
-            int bundleIndex = mVoiceSearchData.mHeaders.size() == 1 ? 0
-                    : index;
-            Bundle bundle = mVoiceSearchData.mHeaders.get(bundleIndex);
-            if (bundle != null && !bundle.isEmpty()) {
-                Iterator<String> iter = bundle.keySet().iterator();
-                headers = new HashMap<String, String>();
-                while (iter.hasNext()) {
-                    String key = iter.next();
-                    headers.put(key, bundle.getString(key));
-                }
-            }
-        }
-        mMainView.loadUrl(mVoiceSearchData.mLastVoiceSearchUrl, headers);
-    }
-    /* package */ static class VoiceSearchData {
-        public VoiceSearchData(ArrayList<String> results,
-                ArrayList<String> urls, ArrayList<String> htmls,
-                ArrayList<String> baseUrls) {
-            mVoiceSearchResults = results;
-            mVoiceSearchUrls = urls;
-            mVoiceSearchHtmls = htmls;
-            mVoiceSearchBaseUrls = baseUrls;
-        }
-        /*
-         * ArrayList of suggestions to be displayed when opening the
-         * SearchManager
-         */
-        public ArrayList<String> mVoiceSearchResults;
-        /*
-         * ArrayList of urls, associated with the suggestions in
-         * mVoiceSearchResults.
-         */
-        public ArrayList<String> mVoiceSearchUrls;
-        /*
-         * ArrayList holding content to load for each item in
-         * mVoiceSearchResults.
-         */
-        public ArrayList<String> mVoiceSearchHtmls;
-        /*
-         * ArrayList holding base urls for the items in mVoiceSearchResults.
-         * If non null, this will either have the same size as
-         * mVoiceSearchResults or have a size of 1, in which case all will use
-         * the same base url
-         */
-        public ArrayList<String> mVoiceSearchBaseUrls;
-        /*
-         * The last url provided by voice search.  Used for comparison to see if
-         * we are going to a page by some method besides voice search.
-         */
-        public String mLastVoiceSearchUrl;
-        /**
-         * The last title used for voice search.  Needed to update the title bar
-         * when switching tabs.
-         */
-        public String mLastVoiceSearchTitle;
-        /**
-         * Whether the Intent which turned on voice search mode contained the
-         * String signifying that Google was the source.
-         */
-        public boolean mSourceIsGoogle;
-        /**
-         * List of headers to be passed into the WebView containing location
-         * information
-         */
-        public ArrayList<Bundle> mHeaders;
-        /**
-         * The Intent used to invoke voice search.  Placed on the
-         * WebHistoryItem so that when coming back to a previous voice search
-         * page we can again activate voice search.
-         */
-        public Intent mVoiceSearchIntent;
-        /**
-         * String used to identify Google as the source of voice search.
-         */
-        public static String SOURCE_IS_GOOGLE
-                = "android.speech.extras.SOURCE_IS_GOOGLE";
-    }
 
     // Container class for the next error dialog that needs to be displayed
     private class ErrorDialog {
@@ -554,7 +334,7 @@ class Tab implements PictureListener {
     // WebViewClient implementation for the main WebView
     // -------------------------------------------------------------------------
 
-    private final WebViewClient mWebViewClient = new WebViewClient() {
+    private final WebViewClientClassicExt mWebViewClient = new WebViewClientClassicExt() {
         private Message mDontResend;
         private Message mResend;
 
@@ -567,20 +347,11 @@ class Tab implements PictureListener {
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             mInPageLoad = true;
+            mUpdateThumbnail = true;
             mPageLoadProgress = INITIAL_PROGRESS;
             mCurrentState = new PageState(mContext,
                     view.isPrivateBrowsingEnabled(), url, favicon);
             mLoadStartTime = SystemClock.uptimeMillis();
-            if (mVoiceSearchData != null
-                    && providersDiffer(url, mVoiceSearchData.mLastVoiceSearchUrl)) {
-                if (mVoiceSearchData.mSourceIsGoogle) {
-                    Intent i = new Intent(LoggingEvents.ACTION_LOG_EVENT);
-                    i.putExtra(LoggingEvents.EXTRA_FLUSH, true);
-                    mContext.sendBroadcast(i);
-                }
-                revertVoiceSearchMode();
-            }
-
 
             // If we start a touch icon load and then load a new page, we don't
             // want to cancel the current touch icon loader. But, we do want to
@@ -613,6 +384,7 @@ class Tab implements PictureListener {
 
         @Override
         public void onPageFinished(WebView view, String url) {
+            mDisableOverrideUrlLoading = false;
             if (!mInPageLoad) {
                 // In page navigation links (www.something.com#footer) will
                 // trigger an onPageFinished which we don't care about.
@@ -629,19 +401,7 @@ class Tab implements PictureListener {
         // return true if want to hijack the url to let another app to handle it
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if (voiceSearchSourceIsGoogle()) {
-                // This method is called when the user clicks on a link.
-                // VoiceSearchMode is turned off when the user leaves the
-                // Google results page, so at this point the user must be on
-                // that page.  If the user clicked a link on that page, assume
-                // that the voice search was effective, and broadcast an Intent
-                // so a receiver can take note of that fact.
-                Intent logIntent = new Intent(LoggingEvents.ACTION_LOG_EVENT);
-                logIntent.putExtra(LoggingEvents.EXTRA_EVENT,
-                        LoggingEvents.VoiceSearch.RESULT_CLICKED);
-                mContext.sendBroadcast(logIntent);
-            }
-            if (mInForeground) {
+            if (!mDisableOverrideUrlLoading && mInForeground) {
                 return mWebViewController.shouldOverrideUrlLoading(Tab.this,
                         view, url);
             } else {
@@ -1050,6 +810,9 @@ class Tab implements PictureListener {
                 mInPageLoad = false;
             }
             mWebViewController.onProgressChanged(Tab.this);
+            if (mUpdateThumbnail && newProgress == 100) {
+                mUpdateThumbnail = false;
+            }
         }
 
         @Override
@@ -1241,9 +1004,9 @@ class Tab implements PictureListener {
         }
 
         @Override
-        public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType) {
+        public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
             if (mInForeground) {
-                mWebViewController.openFileChooser(uploadMsg, acceptType);
+                mWebViewController.openFileChooser(uploadMsg, acceptType, capture);
             } else {
                 uploadMsg.onReceiveValue(null);
             }
@@ -1298,12 +1061,12 @@ class Tab implements PictureListener {
 
     // Subclass of WebViewClient used in subwindows to notify the main
     // WebViewClient of certain WebView activities.
-    private static class SubWindowClient extends WebViewClient {
+    private static class SubWindowClient extends WebViewClientClassicExt {
         // The main WebViewClient.
-        private final WebViewClient mClient;
+        private final WebViewClientClassicExt mClient;
         private final WebViewController mController;
 
-        SubWindowClient(WebViewClient client, WebViewController controller) {
+        SubWindowClient(WebViewClientClassicExt client, WebViewController controller) {
             mClient = client;
             mController = controller;
         }
@@ -1410,20 +1173,17 @@ class Tab implements PictureListener {
         mInPageLoad = false;
         mInForeground = false;
 
-        mDownloadListener = new DownloadListener() {
+        mDownloadListener = new BrowserDownloadListener() {
             public void onDownloadStart(String url, String userAgent,
-                    String contentDisposition, String mimetype,
+                    String contentDisposition, String mimetype, String referer,
                     long contentLength) {
                 mWebViewController.onDownloadStart(Tab.this, url, userAgent, contentDisposition,
-                        mimetype, contentLength);
+                        mimetype, referer, contentLength);
             }
         };
         mWebBackForwardListClient = new WebBackForwardListClient() {
             @Override
             public void onNewHistoryItem(WebHistoryItem item) {
-                if (isInVoiceSearchMode()) {
-                    item.setCustomData(mVoiceSearchData.mVoiceSearchIntent);
-                }
                 if (mClearHistoryUrlPattern != null) {
                     boolean match =
                         mClearHistoryUrlPattern.matcher(item.getOriginalUrl()).matches();
@@ -1438,13 +1198,6 @@ class Tab implements PictureListener {
                         }
                     }
                     mClearHistoryUrlPattern = null;
-                }
-            }
-            @Override
-            public void onIndexChanged(WebHistoryItem item, int index) {
-                Object data = item.getCustomData();
-                if (data != null && data instanceof Intent) {
-                    activateVoiceSearchMode((Intent) data);
                 }
             }
         };
@@ -1469,6 +1222,10 @@ class Tab implements PictureListener {
                 }
             }
         };
+    }
+
+    public boolean shouldUpdateThumbnail() {
+        return mUpdateThumbnail;
     }
 
     /**
@@ -1509,11 +1266,15 @@ class Tab implements PictureListener {
         return mId;
     }
 
+    void setWebView(WebView w) {
+        setWebView(w, true);
+    }
+
     /**
      * Sets the WebView for this tab, correctly removing the old WebView from
      * the container view.
      */
-    void setWebView(WebView w) {
+    void setWebView(WebView w, boolean restore) {
         if (mMainView == w) {
             return;
         }
@@ -1545,12 +1306,13 @@ class Tab implements PictureListener {
             // does a redirect after a period of time. The user could have
             // switched to another tab while waiting for the download to start.
             mMainView.setDownloadListener(mDownloadListener);
-            mMainView.setWebBackForwardListClient(mWebBackForwardListClient);
+            getWebViewClassic().setWebBackForwardListClient(mWebBackForwardListClient);
             TabControl tc = mWebViewController.getTabControl();
             if (tc != null && tc.getOnThumbnailUpdatedListener() != null) {
                 mMainView.setPictureListener(this);
             }
-            if (mSavedState != null) {
+            if (restore && (mSavedState != null)) {
+                restoreUserAgent();
                 WebBackForwardList restoredState
                         = mMainView.restoreState(mSavedState);
                 if (restoredState == null || restoredState.getSize() == 0) {
@@ -1568,8 +1330,6 @@ class Tab implements PictureListener {
     void destroy() {
         if (mMainView != null) {
             dismissSubWindow();
-            // Make sure the embedded title bar isn't still attached
-            mMainView.setEmbeddedTitleBar(null);
             // save the WebView to call destroy() after detach it from the tab
             WebView webView = mMainView;
             setWebView(null);
@@ -1607,12 +1367,12 @@ class Tab implements PictureListener {
                     mWebChromeClient));
             // Set a different DownloadListener for the mSubView, since it will
             // just need to dismiss the mSubView, rather than close the Tab
-            mSubView.setDownloadListener(new DownloadListener() {
+            mSubView.setDownloadListener(new BrowserDownloadListener() {
                 public void onDownloadStart(String url, String userAgent,
-                        String contentDisposition, String mimetype,
+                        String contentDisposition, String mimetype, String referer,
                         long contentLength) {
                     mWebViewController.onDownloadStart(Tab.this, url, userAgent,
-                            contentDisposition, mimetype, contentLength);
+                            contentDisposition, mimetype, referer, contentLength);
                     if (mSubView.copyBackForwardList().getSize() == 0) {
                         // This subwindow was opened for the sole purpose of
                         // downloading a file. Remove it.
@@ -1750,12 +1510,8 @@ class Tab implements PictureListener {
         capture();
         mInForeground = false;
         pause();
-        if (mMainView != null) {
-            mMainView.onMoveToBackgroundTab();
-            mMainView.setOnCreateContextMenuListener(null);
-        }
+        mMainView.setOnCreateContextMenuListener(null);
         if (mSubView != null) {
-            mSubView.onMoveToBackgroundTab();
             mSubView.setOnCreateContextMenuListener(null);
         }
     }
@@ -1784,6 +1540,15 @@ class Tab implements PictureListener {
      */
     WebView getWebView() {
         return mMainView;
+    }
+
+    /**
+     * Return the underlying WebViewClassic implementation. As with getWebView,
+     * this maybe null for background tabs.
+     * @return The main WebView of this tab.
+     */
+    WebViewClassic getWebViewClassic() {
+        return WebViewClassic.fromWebView(mMainView);
     }
 
     void setViewContainer(View container) {
@@ -2024,6 +1789,16 @@ class Tab implements PictureListener {
         }
     }
 
+    private void restoreUserAgent() {
+        if (mMainView == null || mSavedState == null) {
+            return;
+        }
+        if (mSavedState.getBoolean(USERAGENT)
+                != mSettings.hasDesktopUseragent(mMainView)) {
+            mSettings.toggleDesktopUseragent(mMainView);
+        }
+    }
+
     public void updateBookmarkedStatus() {
         mDataController.queryBookmarkStatus(getUrl(), mIsBookmarkCallback);
     }
@@ -2049,26 +1824,29 @@ class Tab implements PictureListener {
         return false;
     }
 
-    public ContentValues createSnapshotValues() {
-        if (mMainView == null) return null;
-        SnapshotByteArrayOutputStream bos = new SnapshotByteArrayOutputStream();
-        try {
-            GZIPOutputStream stream = new GZIPOutputStream(bos);
-            if (!mMainView.saveViewState(stream)) {
-                return null;
+    private static class SaveCallback implements ValueCallback<Boolean> {
+        boolean mResult;
+
+        @Override
+        public void onReceiveValue(Boolean value) {
+            mResult = value;
+            synchronized (this) {
+                notifyAll();
             }
-            stream.flush();
-            stream.close();
-        } catch (Exception e) {
-            Log.w(LOGTAG, "Failed to save view state", e);
-            return null;
         }
-        byte[] data = bos.toByteArray();
+
+    }
+
+    /**
+     * Must be called on the UI thread
+     */
+    public ContentValues createSnapshotValues() {
+        WebViewClassic web = getWebViewClassic();
+        if (web == null) return null;
         ContentValues values = new ContentValues();
         values.put(Snapshots.TITLE, mCurrentState.mTitle);
         values.put(Snapshots.URL, mCurrentState.mUrl);
-        values.put(Snapshots.VIEWSTATE, data);
-        values.put(Snapshots.BACKGROUND, mMainView.getPageBackgroundColor());
+        values.put(Snapshots.BACKGROUND, web.getPageBackgroundColor());
         values.put(Snapshots.DATE_CREATED, System.currentTimeMillis());
         values.put(Snapshots.FAVICON, compressBitmap(getFavicon()));
         Bitmap screenshot = Controller.createScreenshot(mMainView,
@@ -2076,6 +1854,50 @@ class Tab implements PictureListener {
                 Controller.getDesiredThumbnailHeight(mContext));
         values.put(Snapshots.THUMBNAIL, compressBitmap(screenshot));
         return values;
+    }
+
+    /**
+     * Probably want to call this on a background thread
+     */
+    public boolean saveViewState(ContentValues values) {
+        WebViewClassic web = getWebViewClassic();
+        if (web == null) return false;
+        String path = UUID.randomUUID().toString();
+        SaveCallback callback = new SaveCallback();
+        OutputStream outs = null;
+        try {
+            outs = mContext.openFileOutput(path, Context.MODE_PRIVATE);
+            GZIPOutputStream stream = new GZIPOutputStream(outs);
+            synchronized (callback) {
+                web.saveViewState(stream, callback);
+                callback.wait();
+            }
+            stream.flush();
+            stream.close();
+        } catch (Exception e) {
+            Log.w(LOGTAG, "Failed to save view state", e);
+            if (outs != null) {
+                try {
+                    outs.close();
+                } catch (IOException ignore) {}
+            }
+            File file = mContext.getFileStreamPath(path);
+            if (file.exists() && !file.delete()) {
+                file.deleteOnExit();
+            }
+            return false;
+        }
+        File savedFile = mContext.getFileStreamPath(path);
+        if (!callback.mResult) {
+            if (!savedFile.delete()) {
+                savedFile.deleteOnExit();
+            }
+            return false;
+        }
+        long size = savedFile.length();
+        values.put(Snapshots.VIEWSTATE_PATH, path);
+        values.put(Snapshots.VIEWSTATE_SIZE, size);
+        return true;
     }
 
     public byte[] compressBitmap(Bitmap bitmap) {
@@ -2095,6 +1917,10 @@ class Tab implements PictureListener {
             mWebViewController.onPageStarted(this, mMainView, null);
             mMainView.loadUrl(url, headers);
         }
+    }
+
+    public void disableUrlOverridingForLoad() {
+        mDisableOverrideUrlLoading = true;
     }
 
     protected void capture() {

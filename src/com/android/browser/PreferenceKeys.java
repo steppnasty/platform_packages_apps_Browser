@@ -107,4 +107,8 @@ public interface PreferenceKeys {
     static final String PREF_VIDEO_PRELOAD = "preload_video";
     static final String PREF_LOAD_IMAGES = "load_images";
 
+    /**
+     * Key for whether or not the last run was paused.
+     */
+    static final String KEY_LAST_RUN_PAUSED = "last_paused";
 }

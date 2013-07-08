@@ -52,6 +52,8 @@ public class SnapshotProvider extends ContentProvider {
         public static final String FAVICON = "favicon";
         public static final String THUMBNAIL = "thumbnail";
         public static final String DATE_CREATED = "date_created";
+        public static final String VIEWSTATE_PATH = "viewstate_path";
+        public static final String VIEWSTATE_SIZE = "viewstate_size";
     }
 
     public static final String AUTHORITY = "com.android.browser.snapshots";

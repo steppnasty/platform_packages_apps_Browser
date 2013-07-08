@@ -21,6 +21,9 @@ import com.android.browser.view.PieMenu.PieView;
 import android.graphics.Path;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Pie menu item
  */
@@ -35,6 +38,8 @@ public class PieItem {
     private int outer;
     private boolean mSelected;
     private Path mPath;
+    private boolean mEnabled;
+    private List<PieItem> mItems;
 
     public PieItem(View view, int level) {
         mView = view;
@@ -45,6 +50,17 @@ public class PieItem {
         mView = view;
         this.level = level;
         mPieView = sym;
+    }
+
+    public void addItem(PieItem item) {
+        if (mItems == null) {
+            mItems = new ArrayList<PieItem>();
+        }
+        mItems.add(item);
+    }
+
+    public void setEnabled(boolean enabled) {
+        mEnabled = enabled;
     }
 
     public void setSelected(boolean s) {

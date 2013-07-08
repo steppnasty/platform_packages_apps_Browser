@@ -61,6 +61,7 @@ public class TitleBar extends RelativeLayout {
     private boolean mInLoad;
     private boolean mSkipTitleBarAnimations;
     private Animator mTitleBarAnimator;
+    private boolean mIsFixedTitleBar;
 
     public TitleBar(Context context, UiController controller, BaseUi ui,
             FrameLayout parent) {
@@ -140,40 +141,30 @@ public class TitleBar extends RelativeLayout {
     }
 
     void show() {
-        if (mUseQuickControls) {
-            mParent.addView(this);
-        } else if(mUseSlideTransitions) {
-            // Stop the nav bar from being focused (which may cause the keyboard to pop up).
-            mNavBar.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-            if (getParent() == null)
-                mParent.addView(this);
-            setVisibility(VISIBLE);
-            mNavBar.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        cancelTitleBarAnimation(false);
+        if (mUseQuickControls || mSkipTitleBarAnimations) {
+            this.setVisibility(View.VISIBLE);
+            this.setTranslationY(0);
         } else {
-            if (!mSkipTitleBarAnimations) {
-                cancelTitleBarAnimation(false);
-                int visibleHeight = getVisibleTitleHeight();
-                float startPos = (-getEmbeddedHeight() + visibleHeight);
-                if (getTranslationY() != 0) {
-                    startPos = Math.max(startPos, getTranslationY());
-                }
-                mTitleBarAnimator = ObjectAnimator.ofFloat(this,
-                        "translationY",
-                        startPos, 0);
-                setupTitleBarAnimator(mTitleBarAnimator);
-                mTitleBarAnimator.start();
+            int visibleHeight = getVisibleTitleHeight();
+            float startPos = (-getEmbeddedHeight() + visibleHeight);
+            if (getTranslationY() != 0) {
+                startPos = Math.max(startPos, getTranslationY());
             }
-            mBaseUi.setTitleGravity(Gravity.TOP);
+            mTitleBarAnimator = ObjectAnimator.ofFloat(this,
+                    "translationY",
+                    startPos, 0);
+            setupTitleBarAnimator(mTitleBarAnimator);
+            mTitleBarAnimator.start();
         }
         mShowing = true;
     }
 
     void hide() {
         if (mUseQuickControls) {
-            mParent.removeView(this);
-        } else if (mUseSlideTransitions) {
-            setVisibility(GONE);
+            this.setVisibility(View.GONE);
         } else {
+            if (mIsFixedTitleBar) return;
             if (!mSkipTitleBarAnimations) {
                 cancelTitleBarAnimation(false);
                 int visibleHeight = getVisibleTitleHeight();
@@ -184,7 +175,7 @@ public class TitleBar extends RelativeLayout {
                 setupTitleBarAnimator(mTitleBarAnimator);
                 mTitleBarAnimator.start();
             } else {
-                mBaseUi.setTitleGravity(Gravity.NO_GRAVITY);
+                onScrollChanged();
             }
         }
         mShowing = false;
@@ -218,10 +209,8 @@ public class TitleBar extends RelativeLayout {
 
         @Override
         public void onAnimationEnd(Animator animation) {
-            if (!mWasCanceled) {
-                setTranslationY(0);
-            }
-            mBaseUi.setTitleGravity(Gravity.NO_GRAVITY);
+            // update position
+            onScrollChanged();
         }
 
         @Override
@@ -405,6 +394,12 @@ public class TitleBar extends RelativeLayout {
                 mSnapshotBar.setVisibility(GONE);
             }
             mNavBar.setVisibility(VISIBLE);
+        }
+    }
+
+    public void onScrollChanged() {
+        if (!mShowing && !mIsFixedTitleBar) {
+            setTranslationY(getVisibleTitleHeight() - getEmbeddedHeight());
         }
     }
 }

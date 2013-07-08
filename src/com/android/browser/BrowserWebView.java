@@ -24,13 +24,14 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.WebView;
+import android.webkit.WebViewClassic;
 
 import java.util.Map;
 
 /**
  * Manage WebView scroll events
  */
-public class BrowserWebView extends WebView {
+public class BrowserWebView extends WebView implements WebViewClassic.TitleBarDelegate {
 
     public interface OnScrollChangedListener {
         void onScrollChanged(int l, int t, int oldl, int oldt);
@@ -87,19 +88,22 @@ public class BrowserWebView extends WebView {
         mSlop = (int) res.getDimension(R.dimen.qc_slop);
     }
 
+    public void setTitleBar(TitleBar title) {
+        mTitleBar = title;
+    }
+
     @Override
-    protected int getTitleHeight() {
+    public int getTitleHeight() {
         return (mTitleBar != null) ? mTitleBar.getEmbeddedHeight() : 0;
+    }
+
+    // From TitleBarDelegate
+    @Override
+    public void onSetEmbeddedTitleBar(final View title) {
     }
 
     void hideEmbeddedTitleBar() {
         scrollBy(0, getVisibleTitleHeight());
-    }
-
-    @Override
-    public void setEmbeddedTitleBar(final View title) {
-        super.setEmbeddedTitleBar(title);
-        mTitleBar = (TitleBar) title;
     }
 
     public boolean hasTitleBar() {

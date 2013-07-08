@@ -67,11 +67,7 @@ public interface UiController {
 
     void bookmarksOrHistoryPicker(ComboViews startView);
 
-    void startVoiceSearch();
-
-    boolean supportsVoiceSearch();
-
-    void showVoiceSearchResults(String title);
+    void bookmarkCurrentPage();
 
     void editUrl();
 
@@ -104,5 +100,19 @@ public interface UiController {
     Activity getActivity();
 
     void showPageInfo();
+
+    void openPreferences();
+
+    void findOnPage();
+
+    void toggleUserAgent();
+
+    void toggleFullscreen();
+
+    BrowserSettings getSettings();
+
+    boolean supportsVoice();
+
+    void startVoiceRecognizer();
 
 }

@@ -63,7 +63,7 @@ public interface WebViewController {
 
     boolean shouldOverrideKeyEvent(KeyEvent event);
 
-    void onUnhandledKeyEvent(KeyEvent event);
+    boolean onUnhandledKeyEvent(KeyEvent event);
 
     void doUpdateVisitedHistory(Tab tab, boolean isReload);
 
@@ -73,7 +73,7 @@ public interface WebViewController {
             final String host, final String realm);
 
     void onDownloadStart(Tab tab, String url, String useragent, String contentDisposition,
-            String mimeType, long contentLength);
+            String mimeType, String referer, long contentLength);
 
     void showCustomView(Tab tab, View view, int requestedOrientation,
             WebChromeClient.CustomViewCallback callback);
@@ -89,15 +89,11 @@ public interface WebViewController {
 
     void onUserCanceledSsl(Tab tab);
 
-    void activateVoiceSearchMode(String title, List<String> results);
-
-    void revertVoiceSearchMode(Tab tab);
-
     boolean shouldShowErrorConsole();
 
     void onUpdatedSecurityState(Tab tab);
 
-    void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType);
+    void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture);
 
     void endActionMode();
 

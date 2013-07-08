@@ -231,7 +231,7 @@ public class CrashRecoveryHandler {
         }
         updateLastRecovered(mRecoveryState != null
                 ? System.currentTimeMillis() : 0);
-        mController.doStart(mRecoveryState, intent, true);
+        mController.doStart(mRecoveryState, intent);
         mRecoveryState = null;
     }
 
@@ -245,4 +245,35 @@ public class CrashRecoveryHandler {
         mBackgroundHandler.sendEmptyMessage(MSG_PRELOAD_STATE);
     }
 
+    /**
+     * Writes the crash recovery state to a file synchronously.
+     * Errors are swallowed, but logged.
+     * @param state The state to write out
+     */
+    synchronized void writeState(Bundle state) {
+        if (LOGV_ENABLED) {
+            Log.v(LOGTAG, "Saving crash recovery state");
+        }
+        Parcel p = Parcel.obtain();
+        try {
+            state.writeToParcel(p, 0);
+            File stateJournal = new File(mContext.getCacheDir(),
+                    STATE_FILE + ".journal");
+            FileOutputStream fout = new FileOutputStream(stateJournal);
+            fout.write(p.marshall());
+            fout.close();
+            File stateFile = new File(mContext.getCacheDir(),
+                    STATE_FILE);
+            if (!stateJournal.renameTo(stateFile)) {
+                // Failed to rename, try deleting the existing
+                // file and try again
+                stateFile.delete();
+                stateJournal.renameTo(stateFile);
+            }
+        } catch (Throwable e) {
+            Log.i(LOGTAG, "Failed to save persistent state", e);
+        } finally {
+            p.recycle();
+        }
+    }
 }

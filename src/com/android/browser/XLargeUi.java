@@ -36,6 +36,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebChromeClient.CustomViewCallback;
 import android.webkit.WebView;
+import android.webkit.WebViewClassic;
 
 import java.util.List;
 
@@ -53,7 +54,6 @@ public class XLargeUi extends BaseUi {
 
     private NavigationBarTablet mNavBar;
 
-    private PieControlXLarge mPieControl;
     private Handler mHandler;
 
     /**
@@ -85,38 +85,26 @@ public class XLargeUi extends BaseUi {
 
     @Override
     public void setUseQuickControls(boolean useQuickControls) {
-        mUseQuickControls = useQuickControls;
-        mTitleBar.setUseQuickControls(mUseQuickControls);
-        if (useQuickControls) {
-            checkTabCount();
-            mPieControl = new PieControlXLarge(mActivity, mUiController, this);
-            mPieControl.attachToContainer(mContentView);
-            WebView web = getWebView();
-            if (web != null) {
-                web.setEmbeddedTitleBar(null);
-
-            }
-        } else {
-            mActivity.getActionBar().show();
-            if (mPieControl != null) {
-                mPieControl.removeFromContainer(mContentView);
-            }
-            WebView web = getWebView();
-            if (web != null) {
-                if (mTitleBar.getParent() != null) {
-                    ViewGroup p = (ViewGroup) mTitleBar.getParent();
-                    p.removeView(mTitleBar);
-                }
-                web.setEmbeddedTitleBar(mTitleBar);
-            }
-            setTitleGravity(Gravity.NO_GRAVITY);
+        super.setUseQuickControls(useQuickControls);
+        checkHideActionBar();
+        if (!useQuickControls) {
+            mActionBar.show();
         }
         mTabBar.setUseQuickControls(mUseQuickControls);
         // We need to update the tabs with this change
         for (Tab t : mTabControl.getTabs()) {
             t.updateShouldCaptureThumbnails();
         }
-        updateUrlBarAutoShowManagerTarget();
+    }
+
+    private void checkHideActionBar() {
+        if (mUseQuickControls) {
+            mHandler.post(new Runnable() {
+                public void run() {
+                    mActionBar.hide();
+                }
+            });
+        }
     }
 
     private void checkTabCount() {
@@ -143,7 +131,7 @@ public class XLargeUi extends BaseUi {
     void stopWebViewScrolling() {
         BrowserWebView web = (BrowserWebView) mUiController.getCurrentWebView();
         if (web != null) {
-            web.stopScroll();
+            WebViewClassic.fromWebView(web).stopScroll();
         }
     }
 
@@ -189,23 +177,8 @@ public class XLargeUi extends BaseUi {
             Log.e(LOGTAG, "active tab with no webview detected");
             return;
         }
-        // Request focus on the top window.
-        if (mUseQuickControls) {
-            mPieControl.forceToTop(mContentView);
-        } else {
-            // check if title bar is already attached by animation
-            if (mTitleBar.getParent() == null) {
-                view.setEmbeddedTitleBar(mTitleBar);
-            }
-        }
         mTabBar.onSetActiveTab(tab);
-        if (tab.isInVoiceSearchMode()) {
-            showVoiceTitleBar(tab.getVoiceDisplayTitle(), tab.getVoiceSearchResults());
-        } else {
-            revertVoiceTitleBar(tab);
-        }
         updateLockIconToLatest(tab);
-        tab.getTopWindow().requestFocus();
         mTitleBar.setSkipTitleBarAnimations(false);
     }
 
@@ -236,15 +209,11 @@ public class XLargeUi extends BaseUi {
     }
 
     @Override
-    public void editUrl(boolean clearInput) {
+    public void editUrl(boolean clearInput, boolean forceIME) {
         if (mUseQuickControls) {
             mTitleBar.setShowProgressOnly(false);
         }
-        super.editUrl(clearInput);
-    }
-
-    void stopEditingUrl() {
-        mTitleBar.getNavigationBar().stopEditingUrl();
+        super.editUrl(clearInput, forceIME);
     }
 
     @Override
@@ -258,13 +227,6 @@ public class XLargeUi extends BaseUi {
     protected void hideTitleBar() {
         if (isTitleBarShowing()) {
             mTitleBar.hide();
-        }
-    }
-
-    @Override
-    protected void setTitleGravity(int gravity) {
-        if (!mUseQuickControls) {
-            super.setTitleGravity(gravity);
         }
     }
 
@@ -327,13 +289,13 @@ public class XLargeUi extends BaseUi {
                     case KeyEvent.KEYCODE_DPAD_UP:
                     case KeyEvent.KEYCODE_DPAD_LEFT:
                         if ((web != null) && web.hasFocus() && !mTitleBar.hasFocus()) {
-                            editUrl(false);
+                            editUrl(false, false);
                             return true;
                         }
                 }
                 boolean ctrl = event.hasModifiers(KeyEvent.META_CTRL_ON);
                 if (!ctrl && isTypingKey(event) && !mTitleBar.isEditingUrl()) {
-                    editUrl(true);
+                    editUrl(true, false);
                     return mContentView.dispatchKeyEvent(event);
                 }
             }

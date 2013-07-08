@@ -40,6 +40,7 @@ public class BrowserActivity extends Activity {
     public static final String ACTION_SHOW_BROWSER = "show_browser";
     public static final String ACTION_RESTART = "--restart--";
     private static final String EXTRA_STATE = "state";
+    public static final String EXTRA_DISABLE_URL_OVERRIDE = "disable_url_override";
 
     private final static String LOGTAG = "browser";
 
@@ -62,25 +63,27 @@ public class BrowserActivity extends Activity {
             finish();
             return;
         }
-        mController = new Controller(this, icicle == null);
-        boolean xlarge = isTablet(this);
-        if (xlarge) {
-            mUi = new XLargeUi(this, mController);
-        } else {
-            mUi = new PhoneUi(this, mController);
-        }
-        mController.setUi(mUi);
+        mController = createController();
 
-        Bundle state = getIntent().getBundleExtra(EXTRA_STATE);
-        if (state != null && icicle == null) {
-            icicle = state;
-        }
-
-        mController.start(icicle, getIntent());
+        Intent intent = (icicle == null) ? getIntent() : null;
+        mController.start(intent);
     }
 
     public static boolean isTablet(Context context) {
         return context.getResources().getBoolean(R.bool.isTablet);
+    }
+
+    private Controller createController() {
+        Controller controller = new Controller(this);
+        boolean xlarge = isTablet(this);
+        UI ui = null;
+        if (xlarge) {
+            ui = new XLargeUi(this, controller);
+        } else {
+            ui = new PhoneUi(this, controller);
+        }
+        controller.setUi(ui);
+        return controller;
     }
 
     @VisibleForTesting
